@@ -69,8 +69,9 @@ int main(int argc, char **argv)
 	publish_data(&ring_buffer, argv[1]);
 
 	/* TODO: wait for child threads to finish execution*/
-	(void) threads;
+  while (ring_buffer.activeThreads) {}
 
+  ring_buffer_destroy(&ring_buffer);
 	free(thread_ids);
 
 	return 0;

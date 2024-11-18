@@ -3,13 +3,16 @@
 #ifndef __SO_CONSUMER_H__
 #define __SO_CONSUMER_H__
 
+#include <pthread.h>
+#include <semaphore.h>
 #include "ring_buffer.h"
 #include "packet.h"
 
 typedef struct so_consumer_ctx_t {
 	struct so_ring_buffer_t *producer_rb;
-
+  int out_fd;
     /* TODO: add synchronization primitives for timestamp ordering */
+  pthread_mutex_t priority;
 } so_consumer_ctx_t;
 
 int create_consumers(pthread_t *tids,
