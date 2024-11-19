@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <stdio.h>
 
 #include "consumer.h"
 #include "ring_buffer.h"
@@ -15,9 +16,19 @@ void consumer_thread(so_consumer_ctx_t *ctx)
 {
   so_ring_buffer_t *ring = ctx->producer_rb;
   while (true) {
-    sem_wait(&(ring->packetAvailable));
     char buffer[PKT_SZ], out_buf[PKT_SZ];
+    //pthread_cond_wait(&(ring->packetAvailable), &(ring->mutex));
+    //sem_wait(&(ring->packetReady));
+    pthread_mutex_lock(&(ring->mutex));
+    if (ring->stop && ring->read_pos == ring->write_pos) {
+      pthread_mutex_unlock(&(ring->mutex));
+      break;
+    }
+    while (!ring->stop && ring->read_pos == ring->write_pos) {
+      pthread_cond_wait(&(ring->packetAvailable), &(ring->mutex));
+    }
     ring_buffer_dequeue(ring, buffer, PKT_SZ);
+    pthread_mutex_unlock(&(ring->mutex));
     sem_post(&(ring->bufferAvailable));
 
     struct so_packet_t *pkt = (struct so_packet_t *)buffer;
@@ -27,13 +38,10 @@ void consumer_thread(so_consumer_ctx_t *ctx)
 
     int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(action), hash, timestamp);
 		write(ctx->out_fd, out_buf, len);
-    if (ring->read_pos == ring->len * PKT_SZ) {
-      break;
-    }
   }
-  //pthread_cond_signal(&(ring->workingThreadDone));
-  ring->activeThreads--;
-  pthread_exit(0);
+  pthread_mutex_lock(&(ring->mutex));
+  ring->active_threads--;
+  pthread_mutex_unlock(&(ring->mutex));
 }
 
 
@@ -43,15 +51,18 @@ int create_consumers(pthread_t *tids,
 					 const char *out_filename)
 {
   so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
-  rb->activeThreads = num_consumers;
   ctx->producer_rb = rb;
+  ctx->producer_rb->active_threads = num_consumers;
   ctx->out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
 
 	for (int i = 0; i < num_consumers; i++) {
 		pthread_create(&tids[i], NULL, consumer_thread, ctx);
-    pthread_detach(tids[i]);
-
 	}
+
+  for (int i = 0; i < num_consumers; i++) {
+    pthread_detach(tids[i]);
+  }
+  //pthread_detach(tids[0]);
 
 	return num_consumers;
 }
