@@ -29,18 +29,18 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     ring_buffer_dequeue(ring, buffer, PKT_SZ);
 
     pthread_mutex_unlock(&(ring->mutex));
-    //sem_post(&(ring->buffer_free));
+    sem_post(&(ring->buffer_free));
 
     struct so_packet_t *pkt = (struct so_packet_t *)buffer;
     int action = process_packet(pkt);
     unsigned long hash = packet_hash(pkt);
     unsigned long timestamp = pkt->hdr.timestamp;
 
-    int len1 = snprintf(out_buf, 256, "%s %016lx %lu processed by thread %d\n", RES_TO_STR(action), hash, timestamp, ctx->thread_id);
-		write(0, out_buf, len1);
+    // int len1 = snprintf(out_buf, 256, "%s %016lx %lu processed by thread %d\n", RES_TO_STR(action), hash, timestamp, ctx->thread_id);
+		// write(0, out_buf, len1);
 
-    // int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(action), hash, timestamp);
-		// write(ctx->out_fd, out_buf, len);
+    int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(action), hash, timestamp);
+		write(ctx->out_fd, out_buf, len);
   }
 }
 
