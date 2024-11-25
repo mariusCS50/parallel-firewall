@@ -3,7 +3,8 @@
     "semaphore.h": "c",
     "ring_buffer.h": "c",
     "packet.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "utils.h": "c"
   },
   "C_Cpp.errorSquiggles": "enabled"
 }

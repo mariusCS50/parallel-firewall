@@ -14,16 +14,15 @@ typedef struct so_ring_buffer_t {
 	size_t read_pos;
 	size_t write_pos;
 
-	size_t len, active_threads;
+	size_t len;
 	size_t cap;
 
-  int stop;
+  int stop, packets_left;
 
 	/* TODO: Add syncronization primitives */
-  sem_t bufferAvailable, packetReady;
+  sem_t buffer_free;
   pthread_mutex_t mutex;
-  pthread_cond_t packetAvailable;
-  pthread_cond_t workingThreadsDone;
+  pthread_cond_t payload_available;
 } so_ring_buffer_t;
 
 int     ring_buffer_init(so_ring_buffer_t *rb, size_t cap);
