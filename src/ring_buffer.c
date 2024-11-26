@@ -15,7 +15,7 @@ int ring_buffer_init(so_ring_buffer_t *ring, size_t cap)
   ring->read_pos = 0;
   ring->stop = 0;
   ring->packets_left = 0;
-  sem_init(&(ring->buffer_free), 0, 1000);
+  sem_init(&(ring->buffer_free), 0, 10);
   pthread_mutex_init(&(ring->mutex), NULL);
   pthread_cond_init(&(ring->payload_available), NULL);
 	return 1;
