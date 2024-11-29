@@ -18,7 +18,7 @@ typedef struct packet_entry {
     unsigned long timestamp;
 } packet_entry_t;
 
-packet_entry_t log[5];
+packet_entry_t log[100];
 int id = 0;
 
 int compare_by_timestamp(const void *a, const void *b) {
@@ -35,7 +35,6 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
   char buffer[PKT_SZ], out_buf[PKT_SZ];
   while (true) {
     if (ring_buffer_dequeue(ring, buffer, PKT_SZ) == 0) {
-      //close(ctx->out_fd);
       break;
     }
 
@@ -49,12 +48,13 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     log[id].hash = hash;
     log[id].timestamp = timestamp;
     id++;
-    if (id == 2) {
-      qsort(log, 2, sizeof(packet_entry_t), compare_by_timestamp);
-      for (int i = 0; i < 2; i++) {
+    if (id == 100) {
+      qsort(log, 100, sizeof(packet_entry_t), compare_by_timestamp);
+      for (int i = 0; i < 100; i++) {
         int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log[i].action), log[i].hash, log[i].timestamp);
         write(ctx->out_fd, out_buf, len);
       }
+      if (ring->packets_left == 0 & ring->stop) close(ctx->out_fd);
       id = 0;
     }
     pthread_mutex_unlock(&(ring->mutex));
