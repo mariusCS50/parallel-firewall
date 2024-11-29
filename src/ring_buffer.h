@@ -20,7 +20,7 @@ typedef struct so_ring_buffer_t {
   int stop, packets_left;
 
 	/* TODO: Add syncronization primitives */
-  sem_t buffer_free;
+  pthread_cond_t buffer_free;
   pthread_mutex_t mutex;
   pthread_cond_t payload_available;
 } so_ring_buffer_t;
