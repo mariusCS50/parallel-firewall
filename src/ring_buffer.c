@@ -15,8 +15,8 @@ int ring_buffer_init(so_ring_buffer_t *ring, size_t cap)
   ring->read_pos = 0;
   ring->stop = 0;
   ring->packets_left = 0;
-  pthread_cond_init(&(ring->buffer_free), NULL);
   pthread_mutex_init(&(ring->mutex), NULL);
+  pthread_cond_init(&(ring->buffer_free), NULL);
   pthread_cond_init(&(ring->payload_available), NULL);
 	return 1;
 }
@@ -38,10 +38,9 @@ ssize_t ring_buffer_enqueue(so_ring_buffer_t *ring, void *data, size_t size)
 ssize_t ring_buffer_dequeue(so_ring_buffer_t *ring, void *data, size_t size)
 {
   pthread_mutex_lock(&ring->mutex);
-  while (!ring->stop && ring->packets_left < ring->num_consumers) {
+  while (!ring->stop && ring->packets_left == 0) {
       pthread_cond_wait(&(ring->payload_available), &(ring->mutex));
   }
-  pthread_cond_broadcast(&ring->payload_available);
   if (ring->stop && ring->packets_left == 0) {
       pthread_mutex_unlock(&(ring->mutex));
       return 0;
@@ -64,8 +63,6 @@ void ring_buffer_destroy(so_ring_buffer_t *ring)
 
 void ring_buffer_stop(so_ring_buffer_t *ring)
 {
-  pthread_mutex_lock(&ring->mutex);
   ring->stop = 1;
   pthread_cond_broadcast(&ring->payload_available);
-  pthread_mutex_unlock(&ring->mutex);
 }

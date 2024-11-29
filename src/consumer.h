@@ -13,6 +13,7 @@ typedef struct so_consumer_ctx_t {
   int out_fd;
 
     /* TODO: add synchronization primitives for timestamp ordering */
+    pthread_barrier_t barrier;
 } so_consumer_ctx_t;
 
 int create_consumers(pthread_t *tids,
