@@ -55,7 +55,6 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
         int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log[i].action), log[i].hash, log[i].timestamp);
         write(ctx->out_fd, out_buf, len);
       }
-      if (ring->packets_left == 0 & ring->stop) close(ctx->out_fd);
       id = 0;
     }
     pthread_mutex_unlock(&(ring->mutex));
