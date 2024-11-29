@@ -12,16 +12,30 @@
 #include "packet.h"
 #include "utils.h"
 
+typedef struct processed_data {
+  int action;
+  unsigned long hash;
+  unsigned long timestamp;
+} processed_data_t;
+
+processed_data_t log_buf[5];
+int id = 0;
+
+int comp(const void *a, const void *b) {
+    int timestamp1 = (*(processed_data_t *)a).timestamp;
+    int timestamp2 = (*(processed_data_t *)b).timestamp;
+    return timestamp1 - timestamp2;
+}
+
 void *consumer_thread(so_consumer_ctx_t *ctx)
 {
   so_ring_buffer_t *ring = ctx->producer_rb;
   char buffer[PKT_SZ], out_buf[PKT_SZ];
   while (true) {
     pthread_mutex_lock(&(ring->mutex));
-    while (ring->packets_left < ctx->num_consumers && !ring->stop) {
+    while (ring->packets_left == 0 && !ring->stop) {
       pthread_cond_wait(&(ring->payload_available), &(ring->mutex));
     }
-    pthread_cond_broadcast(&(ring->payload_available));
     if (ring->stop && ring->packets_left == 0) {
       pthread_mutex_unlock(&(ring->mutex));
       pthread_exit(0);
@@ -37,8 +51,18 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     unsigned long timestamp = pkt->hdr.timestamp;
 
     pthread_mutex_lock(&(ring->mutex));
-    int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(action), hash, timestamp);
-		write(ctx->out_fd, out_buf, len);
+    log_buf[id].action = action;
+    log_buf[id].hash = hash;
+    log_buf[id].timestamp = timestamp;
+    id++;
+    if (id == 5) {
+      qsort(log_buf, 5, sizeof(processed_data_t), comp);
+      for (int i = 0; i < 5; i++) {
+        int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log_buf[i].action), log_buf[i].hash, log_buf[i].timestamp);
+		    write(ctx->out_fd, out_buf, len);
+      }
+      id = 0;
+    }
     pthread_mutex_unlock(&(ring->mutex));
   }
 }
@@ -48,19 +72,12 @@ int create_consumers(pthread_t *tids,
 					 struct so_ring_buffer_t *rb,
 					 const char *out_filename)
 {
-  // so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
-  // ctx->producer_rb = rb;
-  // ctx->num_consumers = num_consumers;
-  // ctx->counter = 0;
-  // ctx->out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
-  int out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
+  so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
+  ctx->producer_rb = rb;
+  ctx->num_consumers = num_consumers;
+  ctx->out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
 
 	for (int i = 0; i < num_consumers; i++) {
-    so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
-    ctx->producer_rb = rb;
-    ctx->num_consumers = num_consumers;
-    ctx->thread_id = i;
-    ctx->out_fd = out_fd;
 		pthread_create(&tids[i], NULL, &consumer_thread, (void *)ctx);
 	}
 
