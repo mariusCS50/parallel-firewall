@@ -18,7 +18,7 @@ typedef struct packet_entry {
     unsigned long timestamp;
 } packet_entry_t;
 
-packet_entry_t log[4];
+packet_entry_t log[5];
 int id = 0;
 
 int compare_by_timestamp(const void *a, const void *b) {
@@ -49,9 +49,9 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     log[id].hash = hash;
     log[id].timestamp = timestamp;
     id++;
-    if (id == ctx->num_consumers) {
-      qsort(log, ctx->num_consumers, sizeof(packet_entry_t), compare_by_timestamp);
-      for (int i = 0; i < ctx->num_consumers; i++) {
+    if (id == 5) {
+      qsort(log, 5, sizeof(packet_entry_t), compare_by_timestamp);
+      for (int i = 0; i < 5; i++) {
         int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log[i].action), log[i].hash, log[i].timestamp);
         write(ctx->out_fd, out_buf, len);
       }
@@ -70,7 +70,7 @@ int create_consumers(pthread_t *tids,
 {
   so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
   ctx->producer_rb = rb;
-  ctx->num_consumers = num_consumers;
+  ctx->producer_rb->num_consumers = num_consumers;
   ctx->out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
 
 	for (int i = 0; i < num_consumers; i++) {
