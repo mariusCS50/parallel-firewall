@@ -21,6 +21,14 @@ typedef struct packet_entry {
 packet_entry_t log[5];
 int id = 0;
 
+int compare_by_timestamp(const void *a, const void *b) {
+    const packet_entry_t *entry_a = (const packet_entry_t *)a;
+    const packet_entry_t *entry_b = (const packet_entry_t *)b;
+
+    return entry_a->timestamp - entry_b->timestamp;
+}
+
+
 void *consumer_thread(so_consumer_ctx_t *ctx)
 {
   so_ring_buffer_t *ring = ctx->producer_rb;
@@ -42,12 +50,13 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     log[id].timestamp = timestamp;
     id++;
     if (id == 5) {
-      id = 0;
+      qsort(log, 5, sizeof(packet_entry_t), compare_by_timestamp);
       for (int i = 0; i < 5; i++) {
         int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log[i].action), log[i].hash, log[i].timestamp);
         write(ctx->out_fd, out_buf, len);
 		    //write(0, "LINE\n", 5);
       }
+      id = 0;
     }
     // int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(action), hash, timestamp);
     // write(ctx->out_fd, out_buf, len);
