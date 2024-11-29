@@ -49,7 +49,7 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     log[id].hash = hash;
     log[id].timestamp = timestamp;
     id++;
-    if (id = ctx->num_consumers) {
+    if (id == ctx->num_consumers) {
       qsort(log, ctx->num_consumers, sizeof(packet_entry_t), compare_by_timestamp);
       for (int i = 0; i < ctx->num_consumers; i++) {
         int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log[i].action), log[i].hash, log[i].timestamp);
