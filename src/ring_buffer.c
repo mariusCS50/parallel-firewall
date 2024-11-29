@@ -38,7 +38,7 @@ ssize_t ring_buffer_enqueue(so_ring_buffer_t *ring, void *data, size_t size)
 ssize_t ring_buffer_dequeue(so_ring_buffer_t *ring, void *data, size_t size)
 {
   pthread_mutex_lock(&ring->mutex);
-  while (ring->packets_left == 0 && !ring->stop) {
+  while (!ring->stop && ring->packets_left == 0) {
       pthread_cond_wait(&(ring->payload_available), &(ring->mutex));
   }
   if (ring->stop && ring->packets_left == 0) {
