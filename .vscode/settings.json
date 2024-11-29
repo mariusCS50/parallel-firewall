@@ -5,7 +5,8 @@
     "packet.h": "c",
     "string.h": "c",
     "utils.h": "c",
-    "*.tcc": "cpp"
+    "*.tcc": "cpp",
+    "cmath": "c"
   },
   "C_Cpp.errorSquiggles": "enabled"
 }

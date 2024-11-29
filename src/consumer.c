@@ -18,16 +18,14 @@ typedef struct packet_entry {
     unsigned long timestamp;
 } packet_entry_t;
 
-packet_entry_t log[4];
-int id = 0;
+packet_entry_t log_buf[4];
+int curr_log_index = 0;
 
 int compare_by_timestamp(const void *a, const void *b) {
     const packet_entry_t *entry_a = (const packet_entry_t *)a;
     const packet_entry_t *entry_b = (const packet_entry_t *)b;
-
     return entry_a->timestamp - entry_b->timestamp;
 }
-
 
 void *consumer_thread(so_consumer_ctx_t *ctx)
 {
@@ -43,24 +41,25 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     unsigned long hash = packet_hash(pkt);
     unsigned long timestamp = pkt->hdr.timestamp;
 
-    pthread_mutex_lock(&(ring->mutex));
-    log[id].action = action;
-    log[id].hash = hash;
-    log[id].timestamp = timestamp;
-    id++;
-    if (id == ring->num_consumers) {
-      qsort(log, ring->num_consumers, sizeof(packet_entry_t), compare_by_timestamp);
-      for (int i = 0; i < ring->num_consumers; i++) {
-        int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log[i].action), log[i].hash, log[i].timestamp);
+    pthread_mutex_lock(&ring->thread_lock);
+    log_buf[curr_log_index].action = action;
+    log_buf[curr_log_index].hash = hash;
+    log_buf[curr_log_index].timestamp = timestamp;
+    curr_log_index++;
+    if (curr_log_index == ctx->num_consumers) {
+      qsort(log_buf, ctx->num_consumers, sizeof(packet_entry_t), compare_by_timestamp);
+      for (int i = 0; i < ctx->num_consumers; i++) {
+        int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log_buf[i].action), log_buf[i].hash, log_buf[i].timestamp);
         write(ctx->out_fd, out_buf, len);
       }
-      if (ring->packets_left == 0 & ring->stop) close(ctx->out_fd);
-      id = 0;
+      if (ring->stop && ring->packets_left < ctx->num_consumers) {
+        ctx->num_consumers = ring->packets_left;
+      }
+      curr_log_index = 0;
     }
-    pthread_mutex_unlock(&(ring->mutex));
-    pthread_barrier_wait(&ctx->barrier);
+    pthread_mutex_unlock(&ring->thread_lock);
+    pthread_barrier_wait(&ctx->wait_for_all_threads);
   }
-  return;
 }
 
 int create_consumers(pthread_t *tids,
@@ -70,9 +69,9 @@ int create_consumers(pthread_t *tids,
 {
   so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
   ctx->producer_rb = rb;
-  ctx->producer_rb->num_consumers = num_consumers;
+  ctx->num_consumers = num_consumers;
   ctx->out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
-  pthread_barrier_init(&ctx->barrier, NULL, num_consumers);
+  pthread_barrier_init(&ctx->wait_for_all_threads, NULL, num_consumers);
 
 	for (int i = 0; i < num_consumers; i++) {
 		pthread_create(&tids[i], NULL, &consumer_thread, (void *)ctx);
