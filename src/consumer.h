@@ -10,7 +10,7 @@
 
 typedef struct so_consumer_ctx_t {
 	struct so_ring_buffer_t *producer_rb;
-  int out_fd, num_consumers;
+  int out_fd, num_consumers, skip_barrier;
 
     /* TODO: add synchronization primitives for timestamp ordering */
     pthread_barrier_t wait_for_all_threads;

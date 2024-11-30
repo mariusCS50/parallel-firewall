@@ -42,11 +42,9 @@ ssize_t ring_buffer_dequeue(so_ring_buffer_t *ring, void *data, size_t size)
     pthread_cond_wait(&(ring->payload_available), &(ring->thread_lock));
   }
   if (ring->stop && ring->packets_left == 0) {
-    write(0, "Thread Done\n", 12);
     pthread_mutex_unlock(&(ring->thread_lock));
     return 0;
   }
-  write(0, "Thread Process\n", 15);
 	memcpy(data, ring->data + ring->read_pos, size);
   ring->read_pos = (ring->read_pos + size) % ring->cap;
   ring->packets_left--;
@@ -66,5 +64,4 @@ void ring_buffer_destroy(so_ring_buffer_t *ring)
 void ring_buffer_stop(so_ring_buffer_t *ring)
 {
   ring->stop = 1;
-  pthread_cond_broadcast(&ring->payload_available);
 }

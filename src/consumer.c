@@ -46,14 +46,23 @@ void *consumer_thread(so_consumer_ctx_t *ctx)
     log_buf[curr_log_index].hash = hash;
     log_buf[curr_log_index].timestamp = timestamp;
     curr_log_index++;
+    if (ctx->skip_barrier && curr_log_index < ctx->num_consumers) {
+      pthread_mutex_unlock(&ring->thread_lock);
+      continue;
+    }
     if (curr_log_index == ctx->num_consumers) {
       qsort(log_buf, ctx->num_consumers, sizeof(packet_entry_t), compare_by_timestamp);
       for (int i = 0; i < ctx->num_consumers; i++) {
         int len = snprintf(out_buf, 256, "%s %016lx %lu\n", RES_TO_STR(log_buf[i].action), log_buf[i].hash, log_buf[i].timestamp);
         write(ctx->out_fd, out_buf, len);
       }
+      if (ctx->skip_barrier) {
+        pthread_mutex_unlock(&ring->thread_lock);
+        continue;
+      }
       if (ring->stop && ring->packets_left < ctx->num_consumers) {
         ctx->num_consumers = ring->packets_left;
+        ctx->skip_barrier = 1;
       }
       curr_log_index = 0;
     }
@@ -70,6 +79,7 @@ int create_consumers(pthread_t *tids,
   so_consumer_ctx_t *ctx = malloc(sizeof(so_consumer_ctx_t));
   ctx->producer_rb = rb;
   ctx->num_consumers = num_consumers;
+  ctx->skip_barrier = 0;
   ctx->out_fd = open(out_filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
   pthread_barrier_init(&ctx->wait_for_all_threads, NULL, num_consumers);
 
