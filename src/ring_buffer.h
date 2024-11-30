@@ -17,12 +17,11 @@ typedef struct so_ring_buffer_t {
 	size_t len;
 	size_t cap;
 
-  int stop, packets_left;
+	size_t stop, packets_left;
 
-	/* TODO: Add syncronization primitives */
-  pthread_mutex_t thread_lock;
-  pthread_cond_t buffer_available;
-  pthread_cond_t payload_available;
+	pthread_mutex_t thread_lock;
+	pthread_cond_t buffer_available;
+	pthread_cond_t payload_available;
 } so_ring_buffer_t;
 
 int     ring_buffer_init(so_ring_buffer_t *rb, size_t cap);
